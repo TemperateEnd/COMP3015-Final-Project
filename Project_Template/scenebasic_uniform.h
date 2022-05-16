@@ -20,7 +20,7 @@ private:
 
     int shadowMapWidth, shadowMapHeight;
     glm::mat4 lightPV, shadowBias;
-    float angle, tPrev;
+    float angle;
     float time;
 
     Frustum lightFrustum;
@@ -38,7 +38,6 @@ private:
 
     void setupFBO();
     void drawScene();
-    void spitOutDepthBuffer();
 
 public:
     SceneBasic_Uniform();

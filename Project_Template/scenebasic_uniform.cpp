@@ -20,8 +20,7 @@ using glm::vec3;
 using glm::vec4;
 
 //constructor for plane and object mesh instance
-SceneBasic_Uniform::SceneBasic_Uniform() : tPrev(0), 
-                                            shadowMapWidth(512), shadowMapHeight(512),
+SceneBasic_Uniform::SceneBasic_Uniform() :  shadowMapWidth(512), shadowMapHeight(512),
                                             time(0), plane(13.0f, 10.0f, 200, 2){
     objMeshInstance = ObjMesh::load("media/ironSword.obj", true);
 }
@@ -33,7 +32,7 @@ void SceneBasic_Uniform::initScene()
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glEnable(GL_DEPTH_TEST);
 
-    angle = glm::quarter_pi<float>();
+    //angle = glm::quarter_pi<float>();
 
     setupFBO();
 
@@ -47,7 +46,7 @@ void SceneBasic_Uniform::initScene()
         vec4(0.5f, 0.5f, 0.5f, 1.0f)
     );
 
-    //setting up texture by loading file from local media subdirectory
+    //setting up textures by loading file from local media subdirectory
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, swordTex);
 
@@ -60,9 +59,7 @@ void SceneBasic_Uniform::initScene()
     lightFrustum.setPerspective(50.0f, 1.0f, 1.0f, 25.0f);
     lightPV = shadowBias * lightFrustum.getProjectionMatrix() * lightFrustum.getViewMatrix();
 
-    prog.setUniform("Spot.Intensity", vec3(0.85f));
-    prog.setUniform("Spot.Exponent", 50.0f);
-    prog.setUniform("Spot.Cutoff", glm::radians(-15.0f));
+    prog.setUniform("Light.Intensity", vec3(0.85f));
 
     prog.setUniform("ShadowMap", 0);
     angle = glm::half_pi<float>();
@@ -85,19 +82,10 @@ void SceneBasic_Uniform::compile()
 	}
 }
 
-//updates angle value for spotlight
+//updates time value for surface animation
 void SceneBasic_Uniform::update( float t )
 {
     time = t;
-
-    /*float deltaT = t - tPrev;
-    if (tPrev == 0.0f)
-        deltaT = 0.0f;
-
-    tPrev = t;
-    angle += 0.2f * deltaT;
-    if (angle > glm::two_pi<float>())
-        angle -= glm::two_pi<float>();*/
 }
 
 /**Sets Material uniforms for models before rendering them.Also sets position
@@ -106,9 +94,9 @@ void SceneBasic_Uniform::render()
 {
     prog.use();
 
+    //pass1: shadow map generation
     view = lightFrustum.getViewMatrix();
     projection = lightFrustum.getProjectionMatrix();
-
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
     glClear(GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, shadowMapWidth, shadowMapHeight);
@@ -121,11 +109,12 @@ void SceneBasic_Uniform::render()
     glCullFace(GL_BACK);
     glFlush();
 
+    //pass 2: Rendering
     float c = 2.0f;
     vec3 camPos(c * 11.5f * cos(angle), c * 7.0f, c * 11.5f * sin(angle));
     view = glm::lookAt(camPos, vec3(0.0f), vec3(0.0, 1.0f, 0.0f));
-    prog.setUniform("Spot.Position", view * vec4(lightFrustum.getOrigin(), 1.0f));
-    projection = glm::perspective(glm::radians(60.0f), (float)width / height, 0.1f, 100.0f);
+    prog.setUniform("Light.Position", view * vec4(lightFrustum.getOrigin(), 1.0f));
+    projection = glm::perspective(glm::radians(50.0f), (float)width / height, 0.1f, 100.0f);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -137,32 +126,44 @@ void SceneBasic_Uniform::render()
     solidProg.setUniform("Color", vec4(1.0f, 0.0f, 0.0f, 1.0f));
     mat4 mv = view * lightFrustum.getInverseViewMatrix();
     solidProg.setUniform("MVP", projection * mv);
-    lightFrustum.render();
 }
 
 void SceneBasic_Uniform::drawScene()
 {
-    vec3 color = vec3(0.2f, 0.5f, 0.9f);
     prog.setUniform("Time", time);
-    //prog.setUniform("Material.Kd", 0.5f, 0.5f, 0.5f);
-    //prog.setUniform("Material.Ka", 0.4f, 0.4f, 0.4f);
-    //prog.setUniform("Material.Shininess", 100.0f);
-    //prog.setUniform("Tex1", 0);
-    //model = mat4(1.0f);
-    //model = glm::rotate(model, glm::radians(180.0f), vec3(1.0f, 1.0f, 0.0f));
-    //model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
-    //setMatrices();
-    //objMeshInstance->render(); //renders sword
-
+    prog.setUniform("isAnimated", false); //as model won't be animated, this should be false
+    prog.setUniform("Material.Kd", 0.2f, 0.5f, 0.9f);
+    prog.setUniform("Material.Ka", 0.2f, 0.5f, 0.9f);
+    prog.setUniform("Material.Shininess", 250.0f);
+    prog.setUniform("Tex1", 0);
+    model = mat4(1.0f);
+    model = glm::rotate(model, glm::radians(180.0f), vec3(1.0f, 1.0f, 1.0f));
+    model = glm::translate(model, vec3(9.0f, 5.0f, 0.0f));
+    model = glm::scale(model, vec3(3.0f, 3.0f, 3.0f));
+    setMatrices();
+    objMeshInstance->render(); //renders sword
+    
+    prog.setUniform("isAnimated", true); //surface of this model will be animated, so true
     prog.setUniform("Material.Kd", 0.2f, 0.5f, 0.9f);
     prog.setUniform("Material.Ka", 0.2f, 0.5f, 0.9f);
     prog.setUniform("Material.Shininess", 100.0f);
     prog.setUniform("Tex1", 1);
     model = mat4(1.0f);
-    model = glm::rotate(model, glm::radians(-10.0f), vec3(0.0f, 0.0f, 1.0f));
-    model = glm::rotate(model, glm::radians(50.0f), vec3(1.0f, 0.0f, 0.0f));
+    model = glm::translate(model, vec3(0.0f, 0.0f, 7.0f));
     setMatrices();
     plane.render();
+
+    prog.setUniform("isAnimated", false); //surface of this model will be animated, so true
+    prog.setUniform("Material.Kd", 0.2f, 0.5f, 0.9f);
+    prog.setUniform("Material.Ka", 0.2f, 0.5f, 0.9f);
+    prog.setUniform("Material.Shininess", 1.0f);
+    prog.setUniform("Tex1", 1);
+    model = mat4(1.0f);
+    model = glm::rotate(model, glm::radians(90.0f), vec3(1.0f, 0.0f, 0.0f));
+    model = glm::translate(model, vec3(0.0f, 5.0f, -5.0f));
+    setMatrices();
+    plane.render();
+    model = mat4(1.0f);
 }
 
 void SceneBasic_Uniform::resize(int w, int h)

@@ -15,25 +15,39 @@ uniform mat3 NormalMatrix;
 uniform mat4 MVP;
 uniform mat4 ShadowMatrix;
 
-out vec4 Position;
+uniform bool isAnimated;
+
+out vec3 Position;
 out vec3 Normal;
 out vec2 TexCoord;
 out vec4 ShadowCoord;
 
 void main()
 {
-    vec4 pos = vec4(VertexPosition, 1.0f);
+    if(isAnimated) //if animated, code used to animate model
+    {
+        vec4 pos = vec4(VertexPosition, 1.0f);
 
-    float u = Freq * pos.x - Velocity * Time;
-    pos.y = Amp * sin(u);
+        float u = Freq * pos.x - Velocity * Time;
+        pos.y = Amp * sin(u);
 
-    vec3 n = vec3(0.0);
-    n.xy = normalize(vec2(cos(u), 1.0));
+        vec3 n = vec3(0.0);
+        n.xy = normalize(vec2(cos(u), 1.0));
 
-    Position = ModelViewMatrix * pos;
-    Normal = NormalMatrix * n;
-    TexCoord = VertexTexCoord;
-    ShadowCoord = ShadowMatrix * vec4(VertexPosition, 1.0);
+        Position = (ModelViewMatrix * pos).xyz;
+        Normal = NormalMatrix * n;
+        TexCoord = VertexTexCoord;
 
-    gl_Position = MVP * pos;
+        gl_Position = MVP * pos;
+    }
+
+    else //if not animated, default shader code
+    {
+        Position = (ModelViewMatrix * vec4(VertexPosition, 1.0)).xyz;
+        Normal = normalize(NormalMatrix * VertexNormal);
+        TexCoord = VertexTexCoord;
+        ShadowCoord = ShadowMatrix * vec4(VertexPosition, 1.0);
+        gl_Position = MVP * vec4(VertexPosition, 1.0);
+    }
+    
 }
